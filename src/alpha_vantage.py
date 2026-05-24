@@ -1,12 +1,10 @@
-# Databricks notebook source
-# Este arquivo foi gerado a partir de alpha_vantage.ipynb
-# Compatível com Databricks Runtime — 'spark' já existe como variável global
-
-# COMMAND ----------
+# Este arquivo é um script Python puro para execução no Databricks.
+# Compatível com Databricks Runtime e execução local.
 
 import os
 import requests
 from datetime import datetime, timedelta, timezone
+from pyspark.sql import SparkSession
 from pyspark.sql import Row
 from pyspark.sql.types import (
     StructType, StructField,
@@ -15,15 +13,26 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import to_timestamp, col, explode
 from delta.tables import DeltaTable
 
-# COMMAND ----------
+# Carrega variáveis do arquivo .env (caso executado localmente)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# Recupera a chave de API do Databricks Secrets
-# Pré-requisito: criar o Secret Scope antes de executar
-#   databricks secrets create-scope alpha-vantage
-#   databricks secrets put-secret alpha-vantage api-key
-api_key = dbutils.secrets.get(scope="alpha-vantage", key="api-key")
+# Inicializa Spark e dbutils
+if 'spark' not in globals():
+    spark = SparkSession.builder.getOrCreate()
 
-# COMMAND ----------
+try:
+    from pyspark.dbutils import DBUtils
+    dbutils = DBUtils(spark)
+    api_key = dbutils.secrets.get(scope="alpha-vantage", key="api-key")
+except Exception:
+    # Fallback para desenvolvimento local usando arquivo .env
+    api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+
+
 
 # Início de ontem em UTC no formato exigido pela API: YYYYMMDDTHHMM
 yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).replace(
@@ -42,7 +51,7 @@ url = (
 r = requests.get(url)
 data = r.json()
 
-# COMMAND ----------
+
 
 # --- Sub-schemas ---
 
@@ -74,7 +83,7 @@ schema = StructType([
     StructField("ticker_sentiment",        ArrayType(ticker_schema), True),
 ])
 
-# COMMAND ----------
+
 
 # --- Monta as linhas a partir do JSON da API ---
 
@@ -114,7 +123,7 @@ for article in feed:
         tickers,
     ))
 
-# COMMAND ----------
+
 
 # --- Cria o DataFrame PySpark ---
 # No Databricks, 'spark' já é a SparkSession ativa — não é necessário criá-la
@@ -132,7 +141,7 @@ df = (
 print(f"Total de artigos: {df.count()}")
 df.printSchema()
 
-# COMMAND ----------
+
 
 # --- Persiste no Unity Catalog via upsert ---
 # Chave de negócio: url (cada artigo tem URL única)
