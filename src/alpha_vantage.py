@@ -109,15 +109,45 @@ for article in feed:
 # --- Cria o DataFrame PySpark ---
 # No Databricks, 'spark' já é a SparkSession ativa — não é necessário criá-la
 
+from pyspark.sql.functions import current_timestamp
+
 df = spark.createDataFrame(rows, schema=schema)
 
-df = df.withColumn(
-    "time_published",
-    to_timestamp(col("time_published"), "yyyyMMdd'T'HHmmss")
+df = (
+    df
+    .withColumn("time_published", to_timestamp(col("time_published"), "yyyyMMdd'T'HHmmss"))
+    .withColumn("ingestion_ts", current_timestamp())   # auditoria: quando foi ingerido
 )
 
 print(f"Total de artigos: {df.count()}")
 df.printSchema()
+
+# COMMAND ----------
+
+# --- Persiste no Unity Catalog ---
+# Nomes com hífen precisam de backticks tanto no SQL quanto no saveAsTable
+
+CATALOG = "`data-collection`"
+SCHEMA  = "`alpha-vantage`"
+TABLE   = "`news-sentiments`"
+
+# Garante que o schema existe antes de escrever
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
+
+# Escrita em modo append — adiciona apenas os novos registros a cada execução.
+# Para evitar duplicatas (mesmo artigo em chamadas diferentes),
+# use MERGE em vez de append:
+#   DeltaTable.forName(...).alias("t").merge(df.alias("s"), "t.url = s.url")
+#              .whenNotMatchedInsertAll().execute()
+(
+    df.write
+    .format("delta")
+    .mode("append")
+    .option("mergeSchema", "true")
+    .saveAsTable(f"{CATALOG}.{SCHEMA}.{TABLE}")
+)
+
+print(f"✅ Dados salvos em {CATALOG}.{SCHEMA}.{TABLE}")
 
 # COMMAND ----------
 
