@@ -6,12 +6,14 @@
 
 import os
 import requests
+from datetime import datetime, timedelta, timezone
 from pyspark.sql import Row
 from pyspark.sql.types import (
     StructType, StructField,
     StringType, FloatType, ArrayType
 )
 from pyspark.sql.functions import to_timestamp, col, explode
+from delta.tables import DeltaTable
 
 # COMMAND ----------
 
@@ -23,10 +25,18 @@ api_key = dbutils.secrets.get(scope="alpha-vantage", key="api-key")
 
 # COMMAND ----------
 
+# Início de ontem em UTC no formato exigido pela API: YYYYMMDDTHHMM
+yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).replace(
+    hour=0, minute=0, second=0, microsecond=0
+)
+time_from = yesterday.strftime("%Y%m%dT%H%M")   # ex: 20260523T0000
+
 url = (
     "https://www.alphavantage.co/query"
     "?function=NEWS_SENTIMENT"
     "&topics=manufacturing,technology"
+    "&limit=1000"
+    f"&time_from={time_from}"
     f"&apikey={api_key}"
 )
 r = requests.get(url)
@@ -124,72 +134,39 @@ df.printSchema()
 
 # COMMAND ----------
 
-# --- Persiste no Unity Catalog ---
-# Nomes com hífen precisam de backticks tanto no SQL quanto no saveAsTable
+# --- Persiste no Unity Catalog via upsert ---
+# Chave de negócio: url (cada artigo tem URL única)
+# - Se o artigo JÁ existe na tabela → ignora (whenNotMatchedInsertAll)
+# - Se é NOVO → insere
+# Na primeira execução (tabela ainda não existe) → cria diretamente
 
-CATALOG = "`data-collection`"
-SCHEMA  = "`alpha-vantage`"
-TABLE   = "`news-sentiments`"
+CATALOG    = "datacollection"
+SCHEMA     = "alpha_vantage"
+TABLE      = "news_sentiment"
+FULL_TABLE = f"{CATALOG}.{SCHEMA}.{TABLE}"
 
 # Garante que o schema existe antes de escrever
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 
-# Escrita em modo append — adiciona apenas os novos registros a cada execução.
-# Para evitar duplicatas (mesmo artigo em chamadas diferentes),
-# use MERGE em vez de append:
-#   DeltaTable.forName(...).alias("t").merge(df.alias("s"), "t.url = s.url")
-#              .whenNotMatchedInsertAll().execute()
-(
-    df.write
-    .format("delta")
-    .mode("append")
-    .option("mergeSchema", "true")
-    .saveAsTable(f"{CATALOG}.{SCHEMA}.{TABLE}")
-)
-
-print(f"✅ Dados salvos em {CATALOG}.{SCHEMA}.{TABLE}")
-
-# COMMAND ----------
-
-# Visualização dos primeiros registros
-display(df)
-
-# COMMAND ----------
-
-# Explode tickers: uma linha por ticker por artigo
-df_tickers = df.select(
-    "title",
-    "time_published",
-    "overall_sentiment_label",
-    explode("ticker_sentiment").alias("t")
-).select(
-    "title",
-    "time_published",
-    "overall_sentiment_label",
-    col("t.ticker").alias("ticker"),
-    col("t.ticker_sentiment_score").alias("sentiment_score"),
-    col("t.ticker_sentiment_label").alias("sentiment_label"),
-)
-
-display(df_tickers)
-
-# COMMAND ----------
-
-# Explode topics: uma linha por tópico por artigo
-df_topics = df.select(
-    "title",
-    "overall_sentiment_score",
-    explode("topics").alias("tp")
-).select(
-    "title",
-    "overall_sentiment_score",
-    col("tp.topic").alias("topic"),
-    col("tp.relevance_score").alias("topic_relevance"),
-)
-
-display(df_topics)
-
-# COMMAND ----------
-
-# Valores distintos de sentimento
-df.select("overall_sentiment_label").distinct().display()
+if spark.catalog.tableExists(FULL_TABLE):
+    # Tabela já existe — faz MERGE pela url
+    delta_table = DeltaTable.forName(spark, FULL_TABLE)
+    (
+        delta_table.alias("target")
+        .merge(
+            df.alias("source"),
+            "target.url = source.url"       # chave de negócio
+        )
+        .whenMatchedUpdateAll()             # atualiza registros existentes em caso de recálculo no servidor
+        .whenNotMatchedInsertAll()          # insere apenas artigos novos
+        .execute()
+    )
+    print(f"✅ Upsert concluído em {FULL_TABLE}")
+else:
+    # Primeira execução — cria a tabela Delta
+    (
+        df.write
+        .format("delta")
+        .saveAsTable(FULL_TABLE)
+    )
+    print(f"✅ Tabela criada e dados inseridos em {FULL_TABLE}")

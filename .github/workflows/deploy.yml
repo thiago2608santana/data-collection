@@ -1,0 +1,58 @@
+# ================================================================
+# GitHub Actions — Deploy Databricks Asset Bundle
+# ================================================================
+# Disparado automaticamente ao fazer push na branch main.
+# Garante que o pipeline só é atualizado via código versionado.
+# ================================================================
+
+name: Deploy Databricks Asset Bundle
+
+on:
+  push:
+    branches:
+      - main
+
+  # Permite execução manual via UI do GitHub (opcional)
+  workflow_dispatch:
+
+# Permissões mínimas necessárias
+permissions:
+  contents: read
+
+jobs:
+  # ── Job 1: Validação do Bundle ──────────────
+  validate:
+    name: "Validate Bundle"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate Bundle
+        run: databricks bundle validate --target default
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+  # ── Job 2: Deploy no Workspace ──────────────
+  deploy:
+    name: "Deploy to Databricks"
+    runs-on: ubuntu-latest
+    needs: validate
+    # Descomente a linha abaixo para exigir aprovação manual antes do deploy
+    # environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Deploy Bundle
+        run: databricks bundle deploy --target default
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}

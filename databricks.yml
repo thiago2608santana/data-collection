@@ -1,19 +1,64 @@
-# This is a Declarative Automation Bundle definition for data-collection.
-# The Databricks extension requires databricks.yml configuration file.
-# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+# ================================================================
+# Databricks Asset Bundle — synthea-project
+# ================================================================
+# Este arquivo define o pipeline ETL como código (IaC).
+# Todas as alterações devem ser feitas via Git (Pull Request).
+# Deploy automático via GitHub Actions ao fazer merge na branch main.
+# ================================================================
 
 bundle:
   name: data-collection
 
+# ────────────────────────────────────────────
+# Variáveis parametrizáveis por ambiente
+# ────────────────────────────────────────────
+variables:
+  catalog:
+    default: datacollection
+  schema:
+    default: alpha_vantage
+
+# ────────────────────────────────────────────
+# Recursos: Jobs e Tasks
+# ────────────────────────────────────────────
+resources:
+  jobs:
+    data_collection_pipeline:
+      name: "data-collection-pipeline"
+
+      # Schedule: execução diária às 08:00 (horário de São Paulo)
+      schedule:
+        quartz_cron_expression: "0 0 8 * * ?"
+        timezone_id: "America/Sao_Paulo"
+
+      # Tasks do pipeline (executadas em sequência)
+      # Usa Serverless Compute via environment_key (Free Edition)
+      tasks:
+        # Task 1: Ingestão de notícias da Alpha Vantage
+        - task_key: ingestao_alpha_vantage
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/alpha_vantage.py
+
+      # Definição do ambiente serverless
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies: []
+
+      # Notificações por e-mail
+      email_notifications:
+        on_success:
+          - thiago2608santana@gmail.com
+        on_failure:
+          - thiago2608santana@gmail.com
+
+# ────────────────────────────────────────────
+# Target (Workspace único — Free Edition)
+# ────────────────────────────────────────────
 targets:
-  dev:
-    mode: development
+  default:
     default: true
     workspace:
       host: https://dbc-cddd3ed8-7fec.cloud.databricks.com
-
-  ## Optionally, there could be 'staging' or 'prod' targets here.
-  #
-  # prod:
-  #   workspace:
-  #     host: https://dbc-cddd3ed8-7fec.cloud.databricks.com

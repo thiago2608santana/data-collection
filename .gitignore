@@ -35,3 +35,4 @@ build/
 .databricks/
 
 .databricks
+__builtins__.pyi
