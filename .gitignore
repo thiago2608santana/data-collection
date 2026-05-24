@@ -33,3 +33,5 @@ build/
 
 # Databricks
 .databricks/
+
+.databricks
