@@ -26,13 +26,13 @@ graph TD
 ```text
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # Pipeline de CI/CD (GitHub Actions)
+│       └── deploy.yml                  # Pipeline de CI/CD (GitHub Actions)
 ├── src/
-│   └── alpha_vantage.py        # Código-fonte principal do script PySpark
-├── alpha_vantage.ipynb         # Notebook original usado para desenvolvimento e testes
-├── databricks.yml              # Configuração do Databricks Asset Bundle (IaC)
-├── requirements.txt            # Dependências Python para desenvolvimento local/IDE
-└── .env                        # Variáveis de ambiente locais (não versionado)
+│   └── alpha_vantage.py                # Código-fonte principal do script PySpark
+├── exploration_alpha_vantage.ipynb     # Notebook usado para análise exploratória de dados
+├── databricks.yml                      # Configuração do Databricks Asset Bundle (IaC)
+├── requirements.txt                    # Dependências Python para desenvolvimento local/IDE
+└── .env                                # Variáveis de ambiente locais (não versionado)
 ```
 
 ---

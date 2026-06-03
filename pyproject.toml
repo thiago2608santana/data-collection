@@ -9,6 +9,7 @@ dependencies = [
     "databricks-connect>=18.0.0",
     "dotenv>=0.9.9",
     "fastparquet>=2026.5.0",
+    "ipykernel>=7.2.0",
     "matplotlib>=3.10.9",
     "mlxtend>=0.24.0",
     "numpy>=2.4.6",
