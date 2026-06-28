@@ -1,6 +1,6 @@
-# Data Collection Pipeline — Alpha Vantage News Sentiment
+# Data Collection Pipeline — Alpha Vantage
 
-Este repositório contém um pipeline de ingestão de dados desenvolvido no **Databricks** usando **Databricks Asset Bundles (DAB)**, **PySpark**, **Delta Lake** e **GitHub Actions**. O pipeline coleta notícias e dados de sentimento da API **Alpha Vantage**, processa os dados estruturadamente e realiza um *upsert* incremental no **Unity Catalog**.
+Este repositório contém um pipeline de ingestão de dados desenvolvido no **Databricks** usando **Databricks Asset Bundles (DAB)**, **PySpark**, **Delta Lake** e **GitHub Actions**. O pipeline coleta notícias com sentimento de mercado e dados fundamentalistas de empresas a partir da API **Alpha Vantage**, processa os dados estruturadamente e realiza *upserts* incrementais no **Unity Catalog**.
 
 ---
 
@@ -8,16 +8,26 @@ Este repositório contém um pipeline de ingestão de dados desenvolvido no **Da
 
 ```mermaid
 graph TD
-    AV[API Alpha Vantage: News Sentiment] -->|JSON Feed| PS[PySpark Script: alpha_vantage.py]
-    DBS[Databricks Secrets: api-key] -.->|Autenticação| AV
-    PS -->|Transformação & Schema| DF[DataFrame Spark]
-    DF -->|Delta Merge by URL| UC[(Unity Catalog: datacollection.alpha_vantage.news_sentiment)]
+    DBS[Databricks Secrets: api-key] -.->|Autenticação| AV1 & AV2
+
+    AV1[API Alpha Vantage: NEWS_SENTIMENT] -->|JSON Feed| PS1[alpha_vantage.py]
+    PS1 -->|Delta Merge by URL| NS[(datacollection.alpha_vantage.news_sentiment)]
+
+    NS -->|Tickers únicos| PS2[company_overview.py]
+    PS2 -->|OVERVIEW por ticker| AV2[API Alpha Vantage: OVERVIEW]
+    AV2 -->|JSON| PS2
+    PS2 -->|Delta Merge by Symbol| CO[(datacollection.alpha_vantage.company_overview)]
 ```
 
-1. **Ingestão**: O script `src/alpha_vantage.py` consome a API Alpha Vantage filtrando por notícias de ontem (UTC) sobre os tópicos de `manufacturing` (indústria) e `technology` (tecnologia).
-2. **Autenticação**: A chave da API é recuperada de forma segura através do recurso **Databricks Secrets**.
-3. **Transformação**: Os dados JSON são estruturados em um DataFrame PySpark utilizando um schema fortemente tipado (`StructType`). O campo `time_published` é convertido para timestamp e é adicionada uma coluna de auditoria `ingestion_ts`.
-4. **Armazenamento**: É realizado um *upsert* (MERGE) usando Delta Lake. Artigos já existentes (identificados pela URL única) são atualizados em caso de alterações, e novos artigos são inseridos, evitando duplicidade de dados no Unity Catalog.
+### Tasks do pipeline (executadas em sequência)
+
+| Ordem | Task | Script | Chave de Upsert |
+|-------|------|--------|-----------------|
+| 1 | `ingestao_alpha_vantage` | `src/alpha_vantage.py` | `url` |
+| 2 | `ingestao_company_overview` | `src/company_overview.py` | `Symbol` |
+
+1. **News Sentiment**: consome `NEWS_SENTIMENT` filtrando notícias de ontem (UTC) sobre `manufacturing` e `technology`, estrutura o JSON em DataFrame PySpark e persiste via Delta MERGE em `news_sentiment`.
+2. **Company Overview**: lê os tickers únicos de `news_sentiment` (excluindo `FOREX:*`, `CRYPTO:*` etc.), chama `OVERVIEW` para cada ticker e persiste dados fundamentalistas via Delta MERGE em `company_overview`.
 
 ---
 
@@ -28,8 +38,9 @@ graph TD
 │   └── workflows/
 │       └── deploy.yml                  # Pipeline de CI/CD (GitHub Actions)
 ├── src/
-│   └── alpha_vantage.py                # Código-fonte principal do script PySpark
-├── exploration_alpha_vantage.ipynb     # Notebook usado para análise exploratória de dados
+│   ├── alpha_vantage.py                # Task 1: ingestão de notícias com sentimento
+│   └── company_overview.py            # Task 2: dados fundamentalistas por ticker
+├── exploration_alpha_vantage.ipynb     # Notebook de análise exploratória
 ├── databricks.yml                      # Configuração do Databricks Asset Bundle (IaC)
 ├── pyproject.toml                      # Configuração do projeto e dependências (uv)
 ├── uv.lock                             # Lockfile de dependências gerado pelo uv
@@ -41,57 +52,62 @@ graph TD
 ## ⚙️ Configuração e Pré-requisitos
 
 ### 1. Requisitos Locais
-Para configurar seu ambiente de desenvolvimento local e instalar as dependências utilizando o **uv**:
 ```bash
-# Sincronizar o ambiente e instalar dependências
 uv sync
 ```
 
-### 2. Configurar Segredos no Databricks
-Para que o pipeline execute com sucesso no Databricks, você deve configurar o escopo de segredos e adicionar a chave de API da Alpha Vantage:
+Crie um arquivo `.env` na raiz com a chave da API:
+```
+ALPHA_VANTAGE_API_KEY=sua_chave_aqui
+```
 
+### 2. Configurar Segredos no Databricks
 ```bash
-# 1. Criar o escopo de segredos
+# Criar o escopo de segredos
 databricks secrets create-scope alpha-vantage
 
-# 2. Adicionar o segredo (insira a API Key da Alpha Vantage quando solicitado)
+# Adicionar a API Key
 databricks secrets put-secret alpha-vantage api-key
 ```
 
 ### 3. Unity Catalog
-O pipeline cria automaticamente o catálogo e o schema necessários se eles não existirem:
-* **Catálogo**: `datacollection`
-* **Schema**: `alpha_vantage`
-* **Tabela Delta**: `news_sentiment`
+
+O pipeline cria automaticamente o schema se não existir. As tabelas produzidas são:
+
+| Tabela | Descrição | Chave |
+|--------|-----------|-------|
+| `datacollection.alpha_vantage.news_sentiment` | Artigos de notícias com sentimento por ticker | `url` |
+| `datacollection.alpha_vantage.company_overview` | Dados fundamentalistas por empresa | `Symbol` |
 
 ---
 
 ## 🚀 Deploy e CI/CD
 
-O deploy da infraestrutura e dos jobs no Databricks é totalmente automatizado usando **Databricks Asset Bundles (DAB)** e **GitHub Actions**.
-
 ### Deploy Automático (Recomendado)
-Qualquer alteração mesclada (*merged*) na branch `main` disparará o workflow no GitHub Actions ([deploy.yml](file:///Users/thiagosantana/data-collection/.github/workflows/deploy.yml)):
-1. **Validação**: Executa `databricks bundle validate` para garantir que a configuração está correta.
-2. **Deploy**: Executa `databricks bundle deploy` para atualizar os jobs e tarefas no workspace alvo.
+Qualquer merge na branch `main` dispara o workflow do GitHub Actions:
+1. **Validação**: `databricks bundle validate`
+2. **Deploy**: `databricks bundle deploy`
 
-*Nota: Certifique-se de configurar os segredos `DATABRICKS_HOST` e `DATABRICKS_TOKEN` nas configurações do seu repositório do GitHub.*
+Configure os segredos `DATABRICKS_HOST` e `DATABRICKS_TOKEN` nas configurações do repositório no GitHub.
 
 ### Deploy Manual (Local)
-Caso queira realizar o deploy localmente usando a CLI do Databricks:
 ```bash
-# Validar as configurações do bundle
 databricks bundle validate --target default
-
-# Executar o deploy no workspace
 databricks bundle deploy --target default
 ```
 
 ---
 
-## ⏱️ Agendamento (Schedule)
+## ⏱️ Agendamento
 
-O pipeline está configurado na Databricks Asset Bundle ([databricks.yml](file:///Users/thiagosantana/data-collection/databricks.yml)) para rodar de forma agendada:
-* **Frequência**: Diariamente às **08:00** (Horário de Brasília / `America/Sao_Paulo`).
+* **Frequência**: diariamente às **08:00** (America/Sao_Paulo)
 * **Expressão Cron**: `0 0 8 * * ?`
-* **Notificações**: Em caso de sucesso ou falha, e-mails de alerta são enviados para `thiago2608santana@gmail.com`.
+* **Notificações**: e-mail em caso de sucesso ou falha para `thiago2608santana@gmail.com`
+
+---
+
+## ⚠️ Limites da API (plano gratuito)
+
+* 25 requisições/dia · ~75 requisições/minuto
+* `company_overview.py` aplica 1 segundo de pausa entre chamadas
+* Se o número de tickers únicos ultrapassar 25, as requisições excedentes são silenciosamente ignoradas pela API — considere um upgrade de plano conforme o volume crescer
