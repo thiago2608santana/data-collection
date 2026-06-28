@@ -31,7 +31,8 @@ graph TD
 │   └── alpha_vantage.py                # Código-fonte principal do script PySpark
 ├── exploration_alpha_vantage.ipynb     # Notebook usado para análise exploratória de dados
 ├── databricks.yml                      # Configuração do Databricks Asset Bundle (IaC)
-├── requirements.txt                    # Dependências Python para desenvolvimento local/IDE
+├── pyproject.toml                      # Configuração do projeto e dependências (uv)
+├── uv.lock                             # Lockfile de dependências gerado pelo uv
 └── .env                                # Variáveis de ambiente locais (não versionado)
 ```
 
@@ -40,9 +41,10 @@ graph TD
 ## ⚙️ Configuração e Pré-requisitos
 
 ### 1. Requisitos Locais
-Para configurar seu ambiente de desenvolvimento local, instale as dependências listadas no [requirements.txt](file:///Users/thiagosantana/data-collection/requirements.txt):
+Para configurar seu ambiente de desenvolvimento local e instalar as dependências utilizando o **uv**:
 ```bash
-pip install -r requirements.txt
+# Sincronizar o ambiente e instalar dependências
+uv sync
 ```
 
 ### 2. Configurar Segredos no Databricks

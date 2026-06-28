@@ -40,6 +40,14 @@ resources:
           spark_python_task:
             python_file: ./src/alpha_vantage.py
 
+        # Task 2: Ingestão de dados fundamentalistas (Company Overview)
+        - task_key: ingestao_company_overview
+          depends_on:
+            - task_key: ingestao_alpha_vantage
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/company_overview.py
+
       # Definição do ambiente serverless
       environments:
         - environment_key: default

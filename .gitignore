@@ -36,3 +36,6 @@ build/
 
 .databricks
 __builtins__.pyi
+
+.claude
+.mcp.json
