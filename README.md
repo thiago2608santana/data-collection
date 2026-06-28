@@ -36,14 +36,17 @@ graph TD
 ```text
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml                  # Pipeline de CI/CD (GitHub Actions)
+│       └── deploy.yml                          # Pipeline de CI/CD (GitHub Actions)
+├── docs/
+│   ├── data_dictionary_news_sentiment.md       # Dicionário de dados de news_sentiment
+│   └── data_dictionary_company_overview.md     # Dicionário de dados de company_overview
 ├── src/
-│   ├── alpha_vantage.py                # Task 1: ingestão de notícias com sentimento
-│   └── company_overview.py            # Task 2: dados fundamentalistas por ticker
+│   ├── alpha_vantage.py                        # Task 1: ingestão de notícias com sentimento
+│   └── company_overview.py                     # Task 2: dados fundamentalistas por ticker
 ├── notebooks/
-│   └── exploration_company_overview.ipynb  # EDA de company_overview
-├── exploration_alpha_vantage.ipynb     # EDA de news_sentiment
-├── databricks.yml                      # Configuração do Databricks Asset Bundle (IaC)
+│   ├── exploration_news_sentiment.ipynb        # EDA de news_sentiment
+│   └── exploration_company_overview.ipynb      # EDA de company_overview
+├── databricks.yml                              # Configuração do Databricks Asset Bundle (IaC)
 ├── pyproject.toml                      # Configuração do projeto e dependências (uv)
 ├── uv.lock                             # Lockfile de dependências gerado pelo uv
 └── .env                                # Variáveis de ambiente locais (não versionado)
@@ -112,10 +115,10 @@ databricks bundle deploy --target default
 
 | Notebook | Tabela base | Conteúdo |
 |----------|-------------|----------|
-| `exploration_alpha_vantage.ipynb` | `news_sentiment` | Volume temporal, qualidade dos dados, distribuição de sentimento, fontes/autores, séries temporais (decomposição, anomalias), análise de tickers e análise de tópicos |
+| `notebooks/exploration_news_sentiment.ipynb` | `news_sentiment` | Volume temporal, qualidade dos dados, distribuição de sentimento, fontes/autores, séries temporais (decomposição, anomalias), análise de tickers e análise de tópicos |
 | `notebooks/exploration_company_overview.ipynb` | `company_overview` | Top 10 empresas por capitalização de mercado |
 
-### `exploration_alpha_vantage.ipynb` — seções
+### `exploration_news_sentiment.ipynb` — seções
 
 | Seção | Descrição |
 |-------|-----------|

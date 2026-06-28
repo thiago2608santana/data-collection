@@ -11,8 +11,11 @@ src/
   alpha_vantage.py                          # Task 1: ingestão de notícias com sentimento (NEWS_SENTIMENT)
   company_overview.py                       # Task 2: dados fundamentalistas por ticker (OVERVIEW)
 notebooks/
+  exploration_news_sentiment.ipynb          # EDA de news_sentiment (sentimento, tópicos, tickers)
   exploration_company_overview.ipynb        # EDA de company_overview (market cap, métricas)
-exploration_alpha_vantage.ipynb             # EDA de news_sentiment (sentimento, tópicos, tickers)
+docs/
+  data_dictionary_news_sentiment.md         # Dicionário de dados de news_sentiment
+  data_dictionary_company_overview.md       # Dicionário de dados de company_overview
 databricks.yml                              # Definição do bundle (jobs, tasks, schedule, ambiente)
 pyproject.toml                              # Dependências gerenciadas com uv
 .env                                        # Variáveis locais — nunca versionar
@@ -68,7 +71,7 @@ Os scripts detectam se estão rodando localmente (sem `dbutils`) e fazem fallbac
 
 ## Notebooks de análise
 
-- **`exploration_alpha_vantage.ipynb`** — EDA de `news_sentiment`:
+- **`notebooks/exploration_news_sentiment.ipynb`** — EDA de `news_sentiment`:
   - Volume temporal e gaps de ingestão
   - Qualidade dos dados (nulos, tamanho dos arrays)
   - Distribuição de sentimento (label + score contínuo)
