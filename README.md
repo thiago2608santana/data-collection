@@ -40,7 +40,9 @@ graph TD
 ├── src/
 │   ├── alpha_vantage.py                # Task 1: ingestão de notícias com sentimento
 │   └── company_overview.py            # Task 2: dados fundamentalistas por ticker
-├── exploration_alpha_vantage.ipynb     # Notebook de análise exploratória
+├── notebooks/
+│   └── exploration_company_overview.ipynb  # EDA de company_overview
+├── exploration_alpha_vantage.ipynb     # EDA de news_sentiment
 ├── databricks.yml                      # Configuração do Databricks Asset Bundle (IaC)
 ├── pyproject.toml                      # Configuração do projeto e dependências (uv)
 ├── uv.lock                             # Lockfile de dependências gerado pelo uv
@@ -103,6 +105,27 @@ databricks bundle deploy --target default
 * **Frequência**: diariamente às **08:00** (America/Sao_Paulo)
 * **Expressão Cron**: `0 0 8 * * ?`
 * **Notificações**: e-mail em caso de sucesso ou falha para `thiago2608santana@gmail.com`
+
+---
+
+## 📓 Notebooks de Análise
+
+| Notebook | Tabela base | Conteúdo |
+|----------|-------------|----------|
+| `exploration_alpha_vantage.ipynb` | `news_sentiment` | Volume temporal, qualidade dos dados, distribuição de sentimento, fontes/autores, séries temporais (decomposição, anomalias), análise de tickers e análise de tópicos |
+| `notebooks/exploration_company_overview.ipynb` | `company_overview` | Top 10 empresas por capitalização de mercado |
+
+### `exploration_alpha_vantage.ipynb` — seções
+
+| Seção | Descrição |
+|-------|-----------|
+| 2.1 Volume temporal | Artigos por dia, detecção de gaps de ingestão |
+| 2.2 Qualidade dos dados | Nulos por coluna, distribuição do tamanho dos arrays `topics` e `ticker_sentiment` |
+| 2.3 Sentimento | Distribuição de `overall_sentiment_label` e histograma do score contínuo |
+| 2.4 Fontes e autores | Top fontes, domínios e autores por volume |
+| 3.1–3.4 Séries temporais | Sentimento diário, sazonalidade (dia/hora), anomalias por z-score, decomposição aditiva e volatilidade rolling |
+| Tickers | Explode de `ticker_sentiment`, ranking por sentimento médio (filtro `relevance_score ≥ 0.5`) |
+| 4.1–4.4 Tópicos | Explode de `topics`, top tópicos por frequência, distribuição de relevância (boxplot), sentimento médio por tópico, evolução temporal |
 
 ---
 

@@ -8,11 +8,14 @@ Pipeline de coleta de dados financeiros via API Alpha Vantage [link](https://www
 
 ```
 src/
-  alpha_vantage.py       # Task 1: ingestão de notícias com sentimento (NEWS_SENTIMENT)
-  company_overview.py    # Task 2: dados fundamentalistas por ticker (OVERVIEW)
-databricks.yml           # Definição do bundle (jobs, tasks, schedule, ambiente)
-pyproject.toml           # Dependências gerenciadas com uv
-.env                     # Variáveis locais — nunca versionar
+  alpha_vantage.py                          # Task 1: ingestão de notícias com sentimento (NEWS_SENTIMENT)
+  company_overview.py                       # Task 2: dados fundamentalistas por ticker (OVERVIEW)
+notebooks/
+  exploration_company_overview.ipynb        # EDA de company_overview (market cap, métricas)
+exploration_alpha_vantage.ipynb             # EDA de news_sentiment (sentimento, tópicos, tickers)
+databricks.yml                              # Definição do bundle (jobs, tasks, schedule, ambiente)
+pyproject.toml                              # Dependências gerenciadas com uv
+.env                                        # Variáveis locais — nunca versionar
 ```
 
 ## Databricks
@@ -62,6 +65,20 @@ Os scripts detectam se estão rodando localmente (sem `dbutils`) e fazem fallbac
 - ~75 requisições/minuto
 - `company_overview.py` aplica `time.sleep(1)` entre chamadas
 - Se o número de tickers únicos ultrapassar 25, as requisições excedentes são ignoradas silenciosamente pela API
+
+## Notebooks de análise
+
+- **`exploration_alpha_vantage.ipynb`** — EDA de `news_sentiment`:
+  - Volume temporal e gaps de ingestão
+  - Qualidade dos dados (nulos, tamanho dos arrays)
+  - Distribuição de sentimento (label + score contínuo)
+  - Fontes e autores mais frequentes
+  - Séries temporais: sentimento diário, sazonalidade, anomalias por z-score, decomposição aditiva, volatilidade rolling
+  - Análise de tickers: explode de `ticker_sentiment`, ranking por sentimento médio (filtro `relevance_score ≥ 0.5`)
+  - Análise de tópicos (seções 4.1–4.4): explode de `topics`, frequência, distribuição de relevância, sentimento por tópico, evolução temporal
+
+- **`notebooks/exploration_company_overview.ipynb`** — EDA de `company_overview`:
+  - Top 10 empresas por capitalização de mercado (seaborn barplot horizontal, labels em T/B)
 
 ## Convenções
 
