@@ -76,8 +76,8 @@ O pipeline cria automaticamente o schema se não existir. As tabelas produzidas 
 
 | Tabela | Descrição | Chave |
 |--------|-----------|-------|
-| `datacollection.alpha_vantage.news_sentiment` | Artigos de notícias com sentimento por ticker | `url` |
-| `datacollection.alpha_vantage.company_overview` | Dados fundamentalistas por empresa | `Symbol` |
+| `datacollection.alpha_vantage.news_sentiment` | Artigos de notícias com sentimento por ticker — [dicionário de dados](docs/data_dictionary_news_sentiment.md) | `url` |
+| `datacollection.alpha_vantage.company_overview` | Dados fundamentalistas por empresa — [dicionário de dados](docs/data_dictionary_company_overview.md) | `Symbol` |
 
 ---
 

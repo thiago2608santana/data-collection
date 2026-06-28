@@ -2,7 +2,7 @@
 
 ## O que é esse projeto
 
-Pipeline de coleta de dados financeiros via API Alpha Vantage, com persistência no Unity Catalog do Databricks. Orquestrado como Databricks Asset Bundle (DAB), com deploy automático via GitHub Actions ao fazer merge na `main`.
+Pipeline de coleta de dados financeiros via API Alpha Vantage [link](https://www.alphavantage.co/documentation/), com persistência no Unity Catalog do Databricks. Orquestrado como Databricks Asset Bundle (DAB), com deploy automático via GitHub Actions ao fazer merge na `main`.
 
 ## Estrutura
 
